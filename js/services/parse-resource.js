@@ -11,6 +11,8 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
         var dataUrl = config.BASE_URL + "classes/" + className;
         var fileUrl = config.BASE_URL + "files/";
         var funcUrl = config.BASE_URL + "functions";
+    var loginUrl = config.BASE_URL + 'login';
+    var userUrl = config.BASE_URL + 'users';
         var defaultParams = config.defaultParams;
         if (Object.keys(defaultParams).length == 0) {
             defaultParams = null;       // Prevent angular from adding ? on a url with no parameters
@@ -45,6 +47,21 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
                 throw response;
             });
         };
+
+    // my addition for helping to format an array of pointers
+    var formatData = function(data) {
+      angular.forEach(data, function(value, key) {
+        if(Object.prototype.toString.call( value ) === '[object Array]') {
+          var pointers = []
+          for(var j = 0; j < value.length; j ++) {
+            pointers.push({'__type':'Pointer', 'className':value[j].className, objectId: value[j].objectId});
+          }
+          data[key] = pointers;
+        }
+      });
+      return angular.toJson(data);
+
+    }
 
         //---------------------------------------------------------------
         // public static methods
@@ -83,6 +100,23 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
             var httpPromise = $http.post(url, data, {params:defaultParams,headers:headers});
             return promiseThen(httpPromise, "get");
         };
+
+    // login a user (my addition)
+    Resource.login = function (data) {
+      var url = loginUrl;
+      var httpPromise = $http.get(url, {params: angular.extend({}, defaultParams, data), headers: defaultHeaders});
+      return promiseThen(httpPromise, "get");
+    };
+
+    // register a user (my addition)
+    Resource.register = function (data) {
+      var url = userUrl;
+      var resource = Resource.create(data);
+      data = angular.toJson(data);
+      var httpPromise = $http.post(url, data, {params: defaultParams, headers: defaultHeaders});
+      return promiseThen(httpPromise, "post", resource);
+    }
+
 
         // Call Cloud Code function
         Resource.call = function (functionName, functionParams) {
@@ -123,7 +157,7 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
         }
 
         Resource.resourceArray = function(data) {
-            result = [];
+      var result = [];
             if (data == undefined) {
                 return result;
             }
@@ -165,6 +199,24 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
             var httpPromise = $http.put(dataUrl + "/" + objectId, op, {params:defaultParams,headers:defaultHeaders});
             return promiseThen(httpPromise, "operation");
         }
+
+    // add the parse session token to the list of headers (my addition)
+    Resource.user = function(sessionToken) {
+      defaultHeaders['X-Parse-Session-Token'] = sessionToken;
+    }
+
+    // remove the parse session token from the list of headers (my addition)
+    Resource.logout = function(sessionToken) {
+      delete defaultHeaders['X-Parse-Session-Token'];
+    }
+
+    //validate a sessionToken
+    //TODO: make this more useful and integrate with Auth
+    Resource.validate = function(sessionToken) {
+      defaultHeaders['X-Parse-Session-Token'] = sessionToken;
+      var httpPromise = $http.get(userUrl + "/me", {params: defaultParams, headers: defaultHeaders});
+      return promiseThen(httpPromise, "get");
+    }
 
         //---------------------------------------------------------------
         // public instance methods
@@ -240,7 +292,13 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
             this[dateProperty] = {"__type": "Date","iso": date.toISOString()};
         };
 
+    // Determine if this is a new resource (my addition)
+    Resource.prototype.$isNew = function() {
+      return !('objectId' in this);
+    }
+
         return Resource;
     }
+
     return parseResourceFactory;
 }]);
