@@ -51,6 +51,7 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
     // my addition for helping to format an array of pointers
     var formatData = function(data) {
       angular.forEach(data, function(value, key) {
+        /*
         if(Object.prototype.toString.call( value ) === '[object Array]') {
           var pointers = []
           for(var j = 0; j < value.length; j ++) {
@@ -58,6 +59,13 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
           }
           data[key] = pointers;
         }
+        */
+        if(key === 'User') {
+          data[key] = {'__type': 'Pointer', 'className': 'User', 'objectId': value.objectId};
+          data['ACL'] = {}
+          data.ACL[value.objectId] = {read: true, write: true};
+        }
+
       });
       return angular.toJson(data);
 
@@ -201,7 +209,7 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
         }
 
     // add the parse session token to the list of headers (my addition)
-    Resource.user = function(sessionToken) {
+    Resource.setSessionToken = function(sessionToken) {
       defaultHeaders['X-Parse-Session-Token'] = sessionToken;
     }
 
@@ -227,7 +235,7 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
             }
             else
                 return null;
-        }, enumerable : true});
+        }, set: function() {}, enumerable : true});
 
         // Basic REST operations
         Resource.prototype.$get = function (id, queryParams) {
@@ -235,7 +243,7 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
         }
 
         Resource.prototype.$post = function () {
-            var data = angular.toJson(this);
+          var data = formatData(angular.copy(this));
             var httpPromise = $http.post(dataUrl, data, {params:defaultParams,headers:defaultHeaders});
             return promiseThen(httpPromise, "post", this);
         };
