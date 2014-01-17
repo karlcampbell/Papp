@@ -61,9 +61,11 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
         }
         */
         if(key === 'User') {
-          data[key] = {'__type': 'Pointer', 'className': 'User', 'objectId': value.objectId};
-          data['ACL'] = {}
-          data.ACL[value.objectId] = {read: true, write: true};
+          data[key] = {'__type': 'Pointer', 'className': '_User', 'objectId': value.objectId};
+          if(data.ACL === undefined) {
+            data['ACL'] = {}
+            data.ACL[value.objectId] = {read: true, write: true};
+          }
         }
 
       });
