@@ -60,12 +60,13 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
           data[key] = pointers;
         }
         */
-        if(key === 'User') {
-          data[key] = {'__type': 'Pointer', 'className': '_User', 'objectId': value.objectId};
-          if(data.ACL === undefined) {
-            data['ACL'] = {}
-            data.ACL[value.objectId] = {read: true, write: true};
-          }
+        if(key === 'user') {
+          data['user'] = {'__type': 'Pointer', 'className': '_User', 'objectId': value.objectId};
+          data['ACL'] = {}
+          data.ACL[value.objectId] = {read: true, write: true};
+        }
+        if(key.substring(0,1) === '_') {
+          delete data[key];
         }
 
       });
@@ -126,6 +127,16 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
       var httpPromise = $http.post(url, data, {params: defaultParams, headers: defaultHeaders});
       return promiseThen(httpPromise, "post", resource);
     }
+
+      Resource.user = function (id, queryParams) {
+        if (id==undefined || id==null) {
+          throw "invalid id for get"
+        }
+        console.log('wtf');
+        var params = angular.isObject(queryParams)&&!angular.equals(queryParams,{}) ? queryParams : {};
+        var httpPromise = $http.get(userUrl + '/' + id, {params:angular.extend({}, defaultParams, params),headers:defaultHeaders});
+        return promiseThen(httpPromise, "get");
+      };
 
 
         // Call Cloud Code function
@@ -251,7 +262,7 @@ angular.module('parseResource', []).factory('$parseResource', ['PARSE_CONFIG', '
         };
 
         Resource.prototype.$put = function () {
-            var data = angular.toJson(this);
+            var data = formatData(angular.copy(this));
             var httpPromise = $http.put(dataUrl + "/" + this.$id, data, {params:defaultParams,headers:defaultHeaders});
             return promiseThen(httpPromise, "put", this);
         };
